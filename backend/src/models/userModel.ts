@@ -12,3 +12,11 @@ export const createUser = async (email: string, passwordHash: string, role: stri
     );
     return result.rows[0];
 }
+
+export const updateRefreshToken = async (userId: number, refreshToken: string | null) => {
+    const result = await pool.query(
+        'UPDATE users SET refresh_token = $1 WHERE id = $2 RETURNING *',
+        [refreshToken, userId]
+    );
+    return result.rows[0];
+};
