@@ -6,6 +6,7 @@ dotenv.config();
 
 import pool from "./config/db";
 import authRoutes from "./routes/authRoutes";
+import flightRoutes from "./routes/flightRoutes";
 
 const app = express();
 app.use(cors({
@@ -16,6 +17,7 @@ app.use(express.json());
 
 
 app.use("/auth", authRoutes);
+app.use("/flights", flightRoutes);
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
