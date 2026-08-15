@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { loginUser, registerUser } from "../services/authService";
+import { loginUser, refreshAccessToken, registerUser } from "../services/authService";
 import { LoginBody } from "../types/auth.types";
+import { getRefreshCookieOptions } from "../utils/cookieOptions";
 
 export const register = async (req:Request, res:Response) => {
 try{
@@ -33,14 +34,7 @@ export const login = async (req:Request<{}, {}, LoginBody>, res:Response) => {
         const { accessToken, refreshToken, user } = await loginUser(email, password);
 
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            path: '/auth',
-            maxAge: 7 * 24 * 60 * 60 * 1000, //7 days lives the token
-        });
-
+        res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
         res.status(200).json({ accessToken, user });
     } catch (error) {
         console.error("Login error:", error);
@@ -52,3 +46,21 @@ export const login = async (req:Request<{}, {}, LoginBody>, res:Response) => {
         res.status(500).json({ message: "Internal server error" });
     }
 }
+
+export const refresh = async (req: Request, res: Response) => {
+    try {
+        const token = req.cookies.refreshToken;
+        if (!token) {
+            return res.status(401).json({ message: "No refresh token provided" });
+        }
+
+        const { accessToken, refreshToken } = await refreshAccessToken(token);
+
+        res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
+
+        res.status(200).json({ accessToken });
+    } catch (error) {
+        console.error('Refresh error:', error);
+        res.status(401).json({ message: "Invalid or expired refresh token" });
+    }
+};

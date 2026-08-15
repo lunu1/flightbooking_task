@@ -20,3 +20,11 @@ export const updateRefreshToken = async (userId: number, refreshToken: string | 
     );
     return result.rows[0];
 };
+
+export const findUserById = async (id: number) => {
+    const result = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [id]
+    );
+    return result.rows[0] || null;
+};

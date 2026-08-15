@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import {findUserByEmail, createUser, updateRefreshToken} from '../models/userModel';
+import {findUserByEmail, createUser, updateRefreshToken, findUserById} from '../models/userModel';
 import {generateAccessToken, generateRefreshToken} from '../services/tokenService';
 
 
@@ -40,4 +40,27 @@ export const loginUser = async (email: string, password: string) => {
 
 
     return { accessToken, refreshToken, user: userWithoutPassword };
+};
+
+
+export const refreshAccessToken = async (refreshToken: string) => {
+    let payload: { userId: number };
+    try {
+        payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as { userId: number };
+    } catch {
+        throw new Error('Invalid refresh token');
+    }
+
+    const user = await findUserById(payload.userId);
+    if (!user || user.refresh_token !== refreshToken) {
+        // token doesn't match what's stored — expired, already rotated, or logged out
+        throw new Error('Invalid refresh token');
+    }
+
+    const newAccessToken = generateAccessToken(user.id, user.role);
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    await updateRefreshToken(user.id, newRefreshToken);
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 };
