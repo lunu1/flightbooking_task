@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import stripe from '../config/stripe';
-import { confirmBookingPayment } from '../services/bookingServices';
+import { confirmBookingPayment, failBookingPayment } from '../services/bookingServices';
 
 export const stripeWebhookHandler = async (req: Request, res: Response) => {
     const sig = req.headers['stripe-signature'];
@@ -21,7 +21,24 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         const session = event.data.object as any;
         const bookingId = parseInt(session.metadata.bookingId, 10);
         await confirmBookingPayment(bookingId, session.payment_intent);
+
+
     }
+
+
+    if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as any;
+    const bookingId = parseInt(session.metadata.bookingId, 10);
+    await confirmBookingPayment(bookingId, session.payment_intent);
+}
+
+if (event.type === 'payment_intent.payment_failed' || event.type === 'checkout.session.expired') {
+    const obj = event.data.object as any;
+    const bookingId = parseInt(obj.metadata.bookingId, 10);
+    if (!isNaN(bookingId)) {
+        await failBookingPayment(bookingId);
+    }
+}
 
     res.status(200).json({ received: true });
 };

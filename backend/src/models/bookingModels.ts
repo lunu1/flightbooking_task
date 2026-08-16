@@ -91,3 +91,39 @@ export const updateBookingStatus = async (
         [status, paymentIntentId || null, bookingId]
     );
 };
+
+export const releaseSeatsAndFailBooking = async (bookingId: number) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const bookingResult = await client.query(
+            'SELECT flight_id, passenger_count, status FROM bookings WHERE id = $1 FOR UPDATE',
+            [bookingId]
+        );
+        const booking = bookingResult.rows[0];
+
+        if (!booking || booking.status !== 'pending') {
+          
+            await client.query('ROLLBACK');
+            return;
+        }
+
+        await client.query(
+            'UPDATE flights SET seats_available = seats_available + $1 WHERE id = $2',
+            [booking.passenger_count, booking.flight_id]
+        );
+
+        await client.query(
+            `UPDATE bookings SET status = 'failed', updated_at = NOW() WHERE id = $1`,
+            [bookingId]
+        );
+
+        await client.query('COMMIT');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};

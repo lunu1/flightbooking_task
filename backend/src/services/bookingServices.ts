@@ -2,6 +2,8 @@ import { createBookingWithPassengers, updateBookingStripeSession,updateBookingSt
 import { findFlightById } from '../models/flightModels';
 import { findBookingById } from '../models/bookingModels';
 import stripe from '../config/stripe';
+import { releaseSeatsAndFailBooking } from '../models/bookingModels';
+
 
 
 
@@ -72,7 +74,7 @@ export const createCheckoutSession = async (bookingId: number, userId: number) =
                     product_data: {
                         name: `Flight Booking #${booking.id}`,
                     },
-                    unit_amount: Math.round(parseFloat(booking.total_fare) * 100), // Stripe uses smallest currency unit (fils)
+                    unit_amount: Math.round(parseFloat(booking.total_fare) * 100),
                 },
                 quantity: 1,
             },
@@ -80,11 +82,15 @@ export const createCheckoutSession = async (bookingId: number, userId: number) =
         success_url: `${process.env.FRONTEND_URL}/bookings/${booking.id}/success`,
         cancel_url: `${process.env.FRONTEND_URL}/bookings/${booking.id}/cancel`,
         metadata: {
-            bookingId: booking.id.toString(), // used later to identify booking in the webhook
+            bookingId: booking.id.toString(),
+        },
+        payment_intent_data: {                      
+            metadata: {                                  
+                bookingId: booking.id.toString(),         
+            },
         },
     });
 
-    // save session id on the booking so we can cross-reference later
     await updateBookingStripeSession(booking.id, session.id);
 
     return { url: session.url };
@@ -92,4 +98,8 @@ export const createCheckoutSession = async (bookingId: number, userId: number) =
 
 export const confirmBookingPayment = async (bookingId: number, paymentIntentId: string) => {
     await updateBookingStatus(bookingId, 'confirmed', paymentIntentId);
+};
+
+export const failBookingPayment = async (bookingId: number) => {
+    await releaseSeatsAndFailBooking(bookingId);
 };
