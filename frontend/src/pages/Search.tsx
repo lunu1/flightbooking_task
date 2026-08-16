@@ -15,18 +15,32 @@ interface Flight {
     seats_available: number;
 }
 
+const AIRPORTS = [
+    { code: 'DXB', label: 'Dubai (DXB)' },
+    { code: 'AUH', label: 'Abu Dhabi (AUH)' },
+    { code: 'COK', label: 'Kochi (COK)' },
+    { code: 'CCJ', label: 'Kozhikode / Calicut (CCJ)' },
+    { code: 'BLR', label: 'Bangalore (BLR)' },
+    { code: 'DEL', label: 'Delhi (DEL)' },
+];
+
 export default function Search() {
     const [origin, setOrigin] = useState('');
     const [destination, setDestination] = useState('');
     const [date, setDate] = useState('');
     const [flights, setFlights] = useState<Flight[]>([]);
     const [loading, setLoading] = useState(false);
+    const [searched, setSearched] = useState(false);
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+
+    const airportLabel = (code: string) =>
+        AIRPORTS.find((a) => a.code === code)?.label || code;
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setSearched(true);
         try {
             const params: any = {};
             if (origin) params.origin = origin;
@@ -67,29 +81,40 @@ export default function Search() {
                 )}
             </div>
 
-            <form onSubmit={handleSearch} style={{ marginBottom: 24 }}>
-                <input
-                    placeholder="Origin (e.g. DXB)"
+            <form onSubmit={handleSearch} style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <select
                     value={origin}
                     onChange={(e) => setOrigin(e.target.value)}
-                    style={{ marginRight: 8, padding: 8 }}
-                />
-                <input
-                    placeholder="Destination (e.g. COK)"
+                    style={{ padding: 8 }}
+                >
+                    <option value="">From (any)</option>
+                    {AIRPORTS.map((a) => (
+                        <option key={a.code} value={a.code}>{a.label}</option>
+                    ))}
+                </select>
+
+                <select
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    style={{ marginRight: 8, padding: 8 }}
-                />
+                    style={{ padding: 8 }}
+                >
+                    <option value="">To (any)</option>
+                    {AIRPORTS.map((a) => (
+                        <option key={a.code} value={a.code}>{a.label}</option>
+                    ))}
+                </select>
+
                 <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    style={{ marginRight: 8, padding: 8 }}
+                    style={{ padding: 8 }}
                 />
                 <button type="submit">Search</button>
             </form>
 
             {loading && <p>Loading...</p>}
+            {!loading && searched && flights.length === 0 && <p>No flights found.</p>}
 
             {flights.map((flight) => (
                 <div
@@ -107,7 +132,7 @@ export default function Search() {
                     <div>
                         <strong>{flight.airline}</strong> — {flight.flight_number}
                         <br />
-                        {flight.origin} → {flight.destination}
+                        {airportLabel(flight.origin)} → {airportLabel(flight.destination)}
                         <br />
                         {new Date(flight.departure_date).toLocaleString()}
                         <br />
