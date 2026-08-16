@@ -7,17 +7,23 @@ dotenv.config();
 import pool from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import flightRoutes from "./routes/flightRoutes";
+import bookingRoutes from "./routes/bookingRoutes";
+import { stripeWebhookHandler } from "./controllers/webhookController";
 
 const app = express();
 app.use(cors({
  origin: 'http://localhost:3000/', 
     credentials: true,
     }));
+
+app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
 app.use(express.json());
 
 
 app.use("/auth", authRoutes);
 app.use("/flights", flightRoutes);
+app.use("/bookings", bookingRoutes);
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
