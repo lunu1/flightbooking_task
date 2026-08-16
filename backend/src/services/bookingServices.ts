@@ -1,11 +1,9 @@
-import { createBookingWithPassengers, updateBookingStripeSession,updateBookingStatus } from '../models/bookingModels';
+import { createBookingWithPassengers, updateBookingStripeSession,updateBookingStatus, findAllBookings } from '../models/bookingModels';
 import { findFlightById } from '../models/flightModels';
 import { findBookingById } from '../models/bookingModels';
 import stripe from '../config/stripe';
 import { releaseSeatsAndFailBooking,cancelBookingAndReleaseSeats } from '../models/bookingModels';
 const CANCELLATION_WINDOW_HOURS = 24;
-
-
 
 
 interface PassengerInput {
@@ -16,6 +14,8 @@ interface PassengerInput {
     email: string;
     contactNumber: string;
 }
+
+
 
 export const createBooking = async (
     userId: number,
@@ -135,4 +135,31 @@ export const cancelBooking = async (bookingId: number, userId: number, isAdmin: 
     }
 
     return { message: 'Booking cancelled and refund initiated' };
+};
+
+
+export const getAllBookings = async (query: {
+    status?: string;
+    date?: string;
+    origin?: string;
+    destination?: string;
+    page?: string;
+    limit?: string;
+}) => {
+    const page = Math.max(1, parseInt(query.page || '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(query.limit || '10', 10)));
+
+    const { bookings, total } = await findAllBookings ({
+        status: query.status,
+        date: query.date,
+        origin: query.origin,
+        destination: query.destination,
+        page,
+        limit,
+    });
+
+    return {
+        bookings,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
 };

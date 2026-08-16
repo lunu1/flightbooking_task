@@ -13,21 +13,18 @@ import jwt from "jsonwebtoken";
 import { RefreshTokenPayload } from "../types/auth.types";
 
 //register user
-export const registerUser = async (
-  email: string,
-  password: string,
-  role: string = "user",
-) => {
+export const registerUser = async (email: string, password: string) => {
   const existingUser = await findUserByEmail(email);
   if (existingUser) {
     throw new Error("User already exists");
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await createUser(email, passwordHash, role);
-  const { password_hash, ...userWithoutPassword } = user;
+  const user = await createUser(email, passwordHash);
+  const { password_hash, refresh_token, ...userWithoutPassword } = user;
   return userWithoutPassword;
 };
+
 
 //login user
 

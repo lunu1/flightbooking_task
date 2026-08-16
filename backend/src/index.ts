@@ -9,6 +9,8 @@ import authRoutes from "./routes/authRoutes";
 import flightRoutes from "./routes/flightRoutes";
 import bookingRoutes from "./routes/bookingRoutes";
 import { stripeWebhookHandler } from "./controllers/webhookController";
+import adminFlightRoutes from "./routes/adminFlightRoutes";
+import adminBookingRoutes from "./routes/adminBookingRoutes";
 
 const app = express();
 app.use(cors({
@@ -24,6 +26,9 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/flights", flightRoutes);
 app.use("/bookings", bookingRoutes);
+app.use("/admin", adminFlightRoutes);
+app.use("/admin", adminBookingRoutes);
+
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
@@ -43,4 +48,5 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
 

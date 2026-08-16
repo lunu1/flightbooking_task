@@ -1,4 +1,4 @@
-import { searchFlights, findFlightById } from '../models/flightModels';
+import { searchFlights, findFlightById ,createFlight, updateFlight, deleteFlight} from '../models/flightModels';
 
 export const getFlights = async (query: {
     origin?: string;
@@ -34,6 +34,28 @@ export const getFlights = async (query: {
 
 export const getFlightById = async (id: number) => {
     const flight = await findFlightById(id);
+    if (!flight) throw new Error('Flight not found');
+    return flight;
+};
+
+export const addFlight = async (data: any) => {
+    const required = ['flight_number', 'airline', 'origin', 'destination', 'departure_date', 'arrival_date', 'fare', 'seats_total'];
+    for (const field of required) {
+        if (data[field] === undefined || data[field] === null) {
+            throw new Error(`${field} is required`);
+        }
+    }
+    return createFlight(data);
+};
+
+export const editFlight = async (id: number, data: any) => {
+    const flight = await findFlightById(id);
+    if (!flight) throw new Error('Flight not found');
+    return updateFlight(id, data);
+};
+
+export const removeFlight = async (id: number) => {
+    const flight = await deleteFlight(id);
     if (!flight) throw new Error('Flight not found');
     return flight;
 };

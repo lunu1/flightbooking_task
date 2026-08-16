@@ -1,6 +1,71 @@
 import pool from '../config/db';
 import { PoolClient } from 'pg';
 
+interface BookingFilterParams {
+    status?: string | undefined;
+    date?: string | undefined;
+    origin?: string | undefined;
+    destination?: string | undefined;
+    page: number;
+    limit: number;
+}
+
+export const findAllBookings = async (params: BookingFilterParams) => {
+    const { status, date, origin, destination, page, limit } = params;
+
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (status) {
+        conditions.push(`b.status = $${idx++}`);
+        values.push(status);
+    }
+    if (date) {
+        conditions.push(`f.departure_date::date = $${idx++}`);
+        values.push(date);
+    }
+    if (origin) {
+        conditions.push(`f.origin = $${idx++}`);
+        values.push(origin.toUpperCase());
+    }
+    if (destination) {
+        conditions.push(`f.destination = $${idx++}`);
+        values.push(destination.toUpperCase());
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+
+    const dataQuery = `
+        SELECT b.id, b.status, b.passenger_count, b.total_fare, b.created_at,
+               f.flight_number, f.origin, f.destination, f.departure_date,
+               u.email as user_email
+        FROM bookings b
+        JOIN flights f ON b.flight_id = f.id
+        JOIN users u ON b.user_id = u.id
+        ${whereClause}
+        ORDER BY b.created_at DESC
+        LIMIT $${idx++} OFFSET $${idx++}
+    `;
+    values.push(limit, offset);
+
+    const countQuery = `
+        SELECT COUNT(*) FROM bookings b JOIN flights f ON b.flight_id = f.id ${whereClause}
+    `;
+    const countValues = values.slice(0, values.length - 2);
+
+    const [dataResult, countResult] = await Promise.all([
+        pool.query(dataQuery, values),
+        pool.query(countQuery, countValues),
+    ]);
+
+    return {
+        bookings: dataResult.rows,
+        total: parseInt(countResult.rows[0].count, 10),
+    };
+};
+
 export const createBookingWithPassengers = async (
     userId: number,
     flightId: number,
@@ -165,3 +230,4 @@ export const cancelBookingAndReleaseSeats = async (bookingId: number) => {
         client.release();
     }
 };
+
