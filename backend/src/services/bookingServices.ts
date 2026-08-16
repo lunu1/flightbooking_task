@@ -2,7 +2,8 @@ import { createBookingWithPassengers, updateBookingStripeSession,updateBookingSt
 import { findFlightById } from '../models/flightModels';
 import { findBookingById } from '../models/bookingModels';
 import stripe from '../config/stripe';
-import { releaseSeatsAndFailBooking } from '../models/bookingModels';
+import { releaseSeatsAndFailBooking,cancelBookingAndReleaseSeats } from '../models/bookingModels';
+const CANCELLATION_WINDOW_HOURS = 24;
 
 
 
@@ -102,4 +103,36 @@ export const confirmBookingPayment = async (bookingId: number, paymentIntentId: 
 
 export const failBookingPayment = async (bookingId: number) => {
     await releaseSeatsAndFailBooking(bookingId);
+};
+
+export const cancelBooking = async (bookingId: number, userId: number, isAdmin: boolean) => {
+    const booking = await findBookingById(bookingId);
+    if (!booking) {
+        throw new Error('Booking not found');
+    }
+
+    if (!isAdmin) {
+        if (booking.user_id !== userId) {
+            throw new Error('Not authorized for this booking');
+        }
+
+        const flight = await findFlightById(booking.flight_id);
+        const hoursUntilDeparture = (new Date(flight.departure_date).getTime() - Date.now()) / (1000 * 60 * 60);
+
+        if (hoursUntilDeparture < CANCELLATION_WINDOW_HOURS) {
+            throw new Error('Cancellation window has passed');
+        }
+    }
+
+    // release seats + mark cancelled (DB side)
+    const cancelledBooking = await cancelBookingAndReleaseSeats(bookingId);
+
+    // issue Stripe refund
+    if (cancelledBooking.stripe_payment_intent_id) {
+        await stripe.refunds.create({
+            payment_intent: cancelledBooking.stripe_payment_intent_id,
+        });
+    }
+
+    return { message: 'Booking cancelled and refund initiated' };
 };

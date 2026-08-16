@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authenticate';
-import { createBooking } from '../services/bookingServices';
-import { createCheckoutSession } from '../services/bookingServices';
+
+import { createBooking,createCheckoutSession,cancelBooking } from '../services/bookingServices';
 
 
 export const createBookingHandler = async (req: AuthRequest, res: Response) => {
@@ -52,6 +52,35 @@ export const createCheckoutSessionHandler = async (req: AuthRequest, res: Respon
         if (message === 'Booking not found') return res.status(404).json({ message });
         if (message === 'Not authorized for this booking') return res.status(403).json({ message });
         if (message === 'Booking is not in a payable state') return res.status(400).json({ message });
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const cancelBookingHandler = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user!.userId;
+        const isAdmin = req.user!.role === 'admin';
+        const idParam = req.params.id;
+
+        if (!idParam || typeof idParam !== 'string') {
+            return res.status(400).json({ message: "Invalid booking id" });
+        }
+        const bookingId = parseInt(idParam, 10);
+        if (isNaN(bookingId)) {
+            return res.status(400).json({ message: "Invalid booking id" });
+        }
+
+        const result = await cancelBooking(bookingId, userId, isAdmin);
+        res.status(200).json(result);
+    } catch (error) {
+        const message = (error as Error).message;
+        console.error('Cancel booking error:', error);
+
+        if (message === 'Booking not found') return res.status(404).json({ message });
+        if (message === 'Not authorized for this booking') return res.status(403).json({ message });
+        if (message === 'Only confirmed bookings can be cancelled' || message === 'Cancellation window has passed') {
+            return res.status(400).json({ message });
+        }
         res.status(500).json({ message: "Internal server error" });
     }
 };

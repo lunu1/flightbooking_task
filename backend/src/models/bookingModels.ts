@@ -127,3 +127,41 @@ export const releaseSeatsAndFailBooking = async (bookingId: number) => {
         client.release();
     }
 };
+
+export const cancelBookingAndReleaseSeats = async (bookingId: number) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const bookingResult = await client.query(
+            'SELECT * FROM bookings WHERE id = $1 FOR UPDATE',
+            [bookingId]
+        );
+        const booking = bookingResult.rows[0];
+
+        if (!booking) {
+            throw new Error('Booking not found');
+        }
+        if (booking.status !== 'confirmed') {
+            throw new Error('Only confirmed bookings can be cancelled');
+        }
+
+        await client.query(
+            'UPDATE flights SET seats_available = seats_available + $1 WHERE id = $2',
+            [booking.passenger_count, booking.flight_id]
+        );
+
+        await client.query(
+            `UPDATE bookings SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+            [bookingId]
+        );
+
+        await client.query('COMMIT');
+        return booking; // return original row so caller has payment_intent_id for refund
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
