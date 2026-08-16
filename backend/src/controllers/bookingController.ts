@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authenticate';
 
-import { createBooking,createCheckoutSession,cancelBooking } from '../services/bookingServices';
+import { createBooking,createCheckoutSession,cancelBooking,getMyBookings } from '../services/bookingServices';
 
 
 export const createBookingHandler = async (req: AuthRequest, res: Response) => {
@@ -81,6 +81,17 @@ export const cancelBookingHandler = async (req: AuthRequest, res: Response) => {
         if (message === 'Only confirmed bookings can be cancelled' || message === 'Cancellation window has passed') {
             return res.status(400).json({ message });
         }
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const getMyBookingsHandler = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user!.userId;
+        const result = await getMyBookings(userId, req.query as any);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Get my bookings error:', error);
         res.status(500).json({ message: "Internal server error" });
     }
 };

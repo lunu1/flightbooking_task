@@ -4,6 +4,8 @@ import { findBookingById } from '../models/bookingModels';
 import stripe from '../config/stripe';
 import { releaseSeatsAndFailBooking,cancelBookingAndReleaseSeats } from '../models/bookingModels';
 import { getDashboardStats } from '../models/bookingModels';
+import { findBookingsByUser } from '../models/bookingModels';
+
 
 
 const CANCELLATION_WINDOW_HOURS = 24;
@@ -179,5 +181,22 @@ export const getStats = async () => {
         totalRevenue: parseFloat(raw.total_revenue),
         cancellationRate: Math.round(cancellationRate * 100) / 100, // 2 decimal places
         totalBookings,
+    };
+};
+
+export const getMyBookings = async (userId: number, query: { status?: string; page?: string; limit?: string }) => {
+    const page = Math.max(1, parseInt(query.page || '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(query.limit || '10', 10)));
+
+    const { bookings, total } = await findBookingsByUser({
+        userId,
+        status: query.status,
+        page,
+        limit,
+    });
+
+    return {
+        bookings,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
 };

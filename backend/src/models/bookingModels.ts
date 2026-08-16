@@ -10,6 +10,13 @@ interface BookingFilterParams {
     limit: number;
 }
 
+interface UserBookingParams {
+    userId: number;
+    status?: string | undefined;
+    page: number;
+    limit: number;
+}
+
 export const findAllBookings = async (params: BookingFilterParams) => {
     const { status, date, origin, destination, page, limit } = params;
 
@@ -242,4 +249,44 @@ export const getDashboardStats = async () => {
     `;
     const result = await pool.query(statsQuery);
     return result.rows[0];
+};
+
+export const findBookingsByUser = async (params: UserBookingParams) => {
+    const { userId, status, page, limit } = params;
+
+    const conditions: string[] = ['b.user_id = $1'];
+    const values: any[] = [userId];
+    let idx = 2;
+
+    if (status) {
+        conditions.push(`b.status = $${idx++}`);
+        values.push(status);
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const offset = (page - 1) * limit;
+
+    const dataQuery = `
+        SELECT b.id, b.status, b.passenger_count, b.total_fare, b.created_at,
+               f.flight_number, f.airline, f.origin, f.destination, f.departure_date, f.arrival_date
+        FROM bookings b
+        JOIN flights f ON b.flight_id = f.id
+        ${whereClause}
+        ORDER BY b.created_at DESC
+        LIMIT $${idx++} OFFSET $${idx++}
+    `;
+    values.push(limit, offset);
+
+    const countQuery = `SELECT COUNT(*) FROM bookings b ${whereClause}`;
+    const countValues = values.slice(0, values.length - 2);
+
+    const [dataResult, countResult] = await Promise.all([
+        pool.query(dataQuery, values),
+        pool.query(countQuery, countValues),
+    ]);
+
+    return {
+        bookings: dataResult.rows,
+        total: parseInt(countResult.rows[0].count, 10),
+    };
 };
