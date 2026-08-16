@@ -38,7 +38,7 @@ export const searchFlights = async (params: FlightSearchParams) => {
     // lean payload — only fields the frontend actually needs to display
     const dataQuery = `
         SELECT id, flight_number, airline, origin, destination, 
-               departure_date, arrival_date, fare, seats_available
+               departure_date, arrival_date, fare, seats_available,seats_total
         FROM flights
         ${whereClause}
         ORDER BY departure_date ASC

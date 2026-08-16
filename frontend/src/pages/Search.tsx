@@ -70,7 +70,9 @@ export default function Search() {
                 <h2>Flight Search</h2>
                 {user ? (
                     <div>
-                        <Link to="/my-bookings" style={{ marginRight: 12 }}>My Bookings</Link>
+                        {user.role !== 'admin' && (
+                            <Link to="/my-bookings" style={{ marginRight: 12 }}>My Bookings</Link>
+                        )}
                         {user.role === 'admin' && (
                             <Link to="/admin" style={{ marginRight: 12 }}>Admin</Link>
                         )}

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { loginUser, refreshAccessToken, registerUser } from "../services/authService";
+import { loginUser, logoutUser, refreshAccessToken, registerUser } from "../services/authService";
 import { LoginBody } from "../types/auth.types";
 import { getRefreshCookieOptions } from "../utils/cookieOptions";
 import { findUserById } from '../models/userModel';
+import jwt from 'jsonwebtoken';
 import { AuthRequest } from "../middleware/authenticate";
 
 
@@ -76,4 +77,20 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         console.error('Get me error:', error);
         res.status(500).json({ message: "Internal server error" });
     }
+};
+
+// controllers/authController.ts
+export const logout = async (req: Request, res: Response) => {
+    try {
+        const token = req.cookies.refreshToken;
+        if (token) {
+            const payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET!) as { userId: number };
+            await logoutUser(payload.userId);
+        }
+    } catch (error) {
+        console.error('Logout token verify error:', error);
+    }
+
+    res.clearCookie('refreshToken', getRefreshCookieOptions());
+    res.status(200).json({ message: "Logged out" });
 };
