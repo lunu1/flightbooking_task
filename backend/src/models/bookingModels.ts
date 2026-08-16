@@ -231,3 +231,15 @@ export const cancelBookingAndReleaseSeats = async (bookingId: number) => {
     }
 };
 
+export const getDashboardStats = async () => {
+    const statsQuery = `
+        SELECT
+            COUNT(*) FILTER (WHERE created_at::date = CURRENT_DATE) AS bookings_today,
+            COALESCE(SUM(total_fare) FILTER (WHERE status = 'confirmed'), 0) AS total_revenue,
+            COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled_count,
+            COUNT(*) AS total_bookings
+        FROM bookings
+    `;
+    const result = await pool.query(statsQuery);
+    return result.rows[0];
+};
