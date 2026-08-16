@@ -24,30 +24,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-    const tryRefresh = async () => {
-        try {
-            const res = await axios.post(
-                `${API_URL}/auth/refresh`,
-                {},
-                { withCredentials: true }
-            );
-            setAccessToken(res.data.accessToken);
+    useEffect(() => {
+        let cancelled = false;
 
-            // fetch user details using the fresh token
-            const meRes = await axios.get(`${API_URL}/auth/me`, {
-                headers: { Authorization: `Bearer ${res.data.accessToken}` },
-            });
-            setUser(meRes.data);
-        } catch {
-            setAccessToken(null);
-            setUser(null);
-        } finally {
-            setLoading(false);
-        }
-    };
-    tryRefresh();
-}, []);
+        const tryRefresh = async () => {
+            try {
+                const res = await axios.post(
+                    `${API_URL}/auth/refresh`,
+                    {},
+                    { withCredentials: true }
+                );
+                if (cancelled) return;
+                setAccessToken(res.data.accessToken);
+
+                const meRes = await axios.get(`${API_URL}/auth/me`, {
+                    headers: { Authorization: `Bearer ${res.data.accessToken}` },
+                });
+                if (!cancelled) setUser(meRes.data);
+            } catch {
+                if (!cancelled) {
+                    setAccessToken(null);
+                    setUser(null);
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        tryRefresh();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const login = async (email: string, password: string) => {
         const res = await axios.post(

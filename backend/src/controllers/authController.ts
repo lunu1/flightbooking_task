@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { loginUser, refreshAccessToken, registerUser } from "../services/authService";
 import { LoginBody } from "../types/auth.types";
 import { getRefreshCookieOptions } from "../utils/cookieOptions";
+import { findUserById } from '../models/userModel';
+import { AuthRequest } from "../middleware/authenticate";
+
 
 export const register = async (req: Request, res: Response) => {
     try {
@@ -60,5 +63,17 @@ export const refresh = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Refresh error:', error);
         res.status(401).json({ message: "Invalid or expired refresh token" });
+    }
+};
+
+export const getMe = async (req: AuthRequest, res: Response) => {
+    try {
+        const user = await findUserById(req.user!.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        const { password_hash, refresh_token, ...safeUser } = user;
+        res.status(200).json(safeUser);
+    } catch (error) {
+        console.error('Get me error:', error);
+        res.status(500).json({ message: "Internal server error" });
     }
 };

@@ -15,6 +15,8 @@ interface Booking {
     departure_date: string;
 }
 
+const CANCELLATION_WINDOW_HOURS = 24;
+
 export default function MyBookings() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
@@ -35,6 +37,13 @@ export default function MyBookings() {
     useEffect(() => {
         fetchBookings();
     }, []);
+
+    const isCancellable = (b: Booking) => {
+        if (b.status !== 'confirmed') return false;
+        const hoursUntilDeparture =
+            (new Date(b.departure_date).getTime() - Date.now()) / (1000 * 60 * 60);
+        return hoursUntilDeparture >= CANCELLATION_WINDOW_HOURS;
+    };
 
     const handleCancel = async (id: number) => {
         if (!confirm('Cancel this booking?')) return;
@@ -89,7 +98,7 @@ export default function MyBookings() {
                     <div>{new Date(b.departure_date).toLocaleString()}</div>
                     <div>{b.passenger_count} passenger(s) — {b.total_fare} AED</div>
 
-                    {b.status === 'confirmed' && (
+                    {b.status === 'confirmed' && isCancellable(b) && (
                         <button
                             onClick={() => handleCancel(b.id)}
                             disabled={cancellingId === b.id}
@@ -97,6 +106,11 @@ export default function MyBookings() {
                         >
                             {cancellingId === b.id ? 'Cancelling...' : 'Cancel Booking'}
                         </button>
+                    )}
+                    {b.status === 'confirmed' && !isCancellable(b) && (
+                        <p style={{ color: '#999', fontSize: 13, marginTop: 8 }}>
+                            Cancellation window has passed (must cancel 24h+ before departure)
+                        </p>
                     )}
                 </div>
             ))}

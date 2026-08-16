@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import cookieParser from 'cookie-parser';
+
 
 dotenv.config();
 
@@ -13,15 +15,22 @@ import adminFlightRoutes from "./routes/adminFlightRoutes";
 import adminBookingRoutes from "./routes/adminBookingRoutes";
 
 const app = express();
-app.use(cors({
- origin: 'http://localhost:3000/', 
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
     credentials: true,
-    }));
+  }),
+);
 
-app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+app.use(cookieParser());
+
+app.post(
+  "/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhookHandler,
+);
 
 app.use(express.json());
-
 
 app.use("/auth", authRoutes);
 app.use("/flights", flightRoutes);
@@ -48,5 +57,3 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
